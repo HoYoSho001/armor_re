@@ -1,0 +1,46 @@
+launch:
+# ---------------------------------------------------------------------------
+#  完整管线：相机 → 检测 → EKF → 串口
+#
+#  注意：ArmorRe（detect_armor.cpp）目前还是【自己读视频文件】的，
+#        还没有改成订阅 /image_raw。所以现在 CameraNode 和 ArmorRe
+#        是两个独立的图像源，同时跑会各自处理各自的画面。
+#        要让它们连起来，需把 ArmorRe 改成订阅 /image_raw。
+# ---------------------------------------------------------------------------
+
+# 相机节点：发布 /image_raw (sensor_msgs/msg/Image)，海康 MVS 专用
+# （cam.cpp 已删掉"读视频文件"的降级分支，video_path / loop 参数不存在了）
+
+#- node:
+#    pkg: "armor_re"
+#    exec: "CameraNode"
+#    output: "screen"
+#    parameters:
+#    - {name: "exposure_us", value: 2000.0}   # 曝光（微秒）：决定帧率上限
+#    - {name: "frame_rate",  value: 165.0}    # 目标帧率
+#    - {name: "auto_gain",   value: true}     # 增益自动
+#    - {name: "gain",        value: 0.0}      # auto_gain=false 时生效
+#    - {name: "serial_number", value: ""}     # 空=取第一台；多机时填序列号
+
+# 检测节点：目前仍自己读视频
+- node:
+    pkg: "armor_re"
+    exec: "ArmorRe"
+    output: "screen"
+
+# EKF 节点：订阅 /armor_location
+- node:
+    pkg: "armor_re"
+    exec: "ArmorEKF"
+    output: "screen"
+
+# 串口节点：收电控云台角 → /gimbal_state；  订阅 /gimbal_cmd → 发 21 字节
+#- node:
+#    pkg: "armor_re"
+#    exec: "SerialNode"
+#    output: "screen"
+#    parameters:
+#    - {name: "port",             value: "/dev/ttyACM0"}
+#    - {name: "baud",             value: 115200}
+#    - {name: "compensate_yaw",   value: 0.5}
+#    - {name: "compensate_pitch", value: -0.5}
